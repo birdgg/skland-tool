@@ -13,7 +13,6 @@ type HmacSha256 = Hmac<Sha256>;
 pub struct SignedHeaders {
     pub platform: String,
     pub timestamp: String,
-    pub did: String,
     pub version_name: String,
     pub sign: String,
 }
@@ -75,7 +74,6 @@ pub fn signed_headers_at(
     Ok(SignedHeaders {
         platform: "3".to_owned(),
         timestamp,
-        did: did.to_owned(),
         version_name: "1.0.0".to_owned(),
         sign,
     })

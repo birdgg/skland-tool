@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-use crate::app::{print_reports, run_all_users};
+use crate::app::{print_reports, run_sign_in};
 use crate::config::load_config;
 use crate::http::SklandClient;
 use crate::scheduler::run_daemon;
@@ -44,7 +44,6 @@ async fn main() -> Result<()> {
     match command {
         Command::CheckConfig => {
             println!("配置 OK: {}", config.env_file.display());
-            println!("用户数: {}", config.users.len());
             println!(
                 "调度: 每天北京时间 {:02}:{:02}",
                 config.schedule.hour, config.schedule.minute
@@ -52,7 +51,7 @@ async fn main() -> Result<()> {
         }
         Command::RunOnce => {
             let client = SklandClient::new()?;
-            let reports = run_all_users(&config, &client).await;
+            let reports = run_sign_in(&config, &client).await;
             print_reports(&reports);
         }
         Command::Daemon => {

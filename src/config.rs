@@ -11,7 +11,7 @@ pub fn load_config(path: &Path) -> Result<AppConfig> {
     }
 
     let env = read_env(path)?;
-    let users = parse_users(&env)?;
+    let user = parse_user(&env)?;
     let schedule = ScheduleConfig {
         hour: read_u32_default(
             6,
@@ -24,7 +24,7 @@ pub fn load_config(path: &Path) -> Result<AppConfig> {
     };
     let config = AppConfig {
         schedule,
-        users,
+        user,
         configured_device_id: lookup_many(&env, &["SKLAND_DID", "SKLAND_DEVICE_ID", "DID", "D_ID"])
             .cloned(),
         env_file: path.to_path_buf(),
@@ -34,11 +34,8 @@ pub fn load_config(path: &Path) -> Result<AppConfig> {
 }
 
 pub fn check_config(config: &AppConfig) -> Result<()> {
-    if config.users.is_empty() {
+    if config.user.user_token.is_empty() {
         bail!(".env 中没有找到用户 token");
-    }
-    if config.users.iter().any(|user| user.user_token.is_empty()) {
-        bail!("存在空 token");
     }
     if config.schedule.hour > 23 {
         bail!("SKLAND_SCHEDULE_HOUR 必须在 0..23");
@@ -102,73 +99,13 @@ fn unquote(value: &str) -> &str {
     }
 }
 
-fn parse_users(env: &HashMap<String, String>) -> Result<Vec<UserConfig>> {
-    let numbered = parse_numbered_users(env);
-    if !numbered.is_empty() {
-        return Ok(numbered);
-    }
-
-    if let Some(token) = lookup_many(env, &["SKLAND_TOKEN", "SKLAND_USER_TOKEN", "USER_TOKEN"]) {
-        return Ok(vec![UserConfig {
-            nickname: lookup_many(env, &["SKLAND_NICKNAME", "NICKNAME"])
-                .cloned()
-                .unwrap_or_else(|| "default".to_owned()),
-            user_token: token.clone(),
-            game_type: game_type_from_env(env),
-        }]);
-    }
-
-    if let Some(value) = lookup_many(env, &["SKLAND_USERS"]) {
-        return value
-            .split(',')
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(parse_packed_user)
-            .collect();
-    }
-
-    Ok(Vec::new())
-}
-
-fn parse_numbered_users(env: &HashMap<String, String>) -> Vec<UserConfig> {
-    (1..=20)
-        .filter_map(|n| {
-            let token_key = format!("SKLAND_USER_{n}_TOKEN");
-            let token = env.get(&token_key)?;
-            let nickname = env
-                .get(&format!("SKLAND_USER_{n}_NICKNAME"))
-                .cloned()
-                .unwrap_or_else(|| format!("user-{n}"));
-            let game_type = read_game_type(env.get(&format!("SKLAND_USER_{n}_GAME_TYPE")));
-            Some(UserConfig {
-                nickname,
-                user_token: token.clone(),
-                game_type,
-            })
-        })
-        .collect()
-}
-
-fn parse_packed_user(value: &str) -> Result<UserConfig> {
-    let parts = value.split(':').map(str::trim).collect::<Vec<_>>();
-    match parts.as_slice() {
-        [name, token] => Ok(UserConfig {
-            nickname: (*name).to_owned(),
-            user_token: (*token).to_owned(),
-            game_type: GameType::AllGames,
-        }),
-        [name, token, game_type] => {
-            let raw = game_type.parse::<i32>().unwrap_or(0);
-            let game_type =
-                GameType::from_int(raw).ok_or_else(|| anyhow!("非法 game_type: {game_type}"))?;
-            Ok(UserConfig {
-                nickname: (*name).to_owned(),
-                user_token: (*token).to_owned(),
-                game_type,
-            })
-        }
-        _ => bail!("SKLAND_USERS 格式应为 nickname:token[:game_type],nickname2:token2[:game_type]"),
-    }
+fn parse_user(env: &HashMap<String, String>) -> Result<UserConfig> {
+    let token =
+        lookup_many(env, &["SKLAND_TOKEN"]).ok_or_else(|| anyhow!(".env 中没有找到用户 token"))?;
+    Ok(UserConfig {
+        user_token: token.clone(),
+        game_type: game_type_from_env(env),
+    })
 }
 
 fn game_type_from_env(env: &HashMap<String, String>) -> GameType {
@@ -195,28 +132,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_numbered_users_first() {
+    fn parses_single_user() {
         let env = HashMap::from([
             ("SKLAND_TOKEN".to_owned(), "single".to_owned()),
-            ("SKLAND_USER_1_TOKEN".to_owned(), "numbered".to_owned()),
-            ("SKLAND_USER_1_GAME_TYPE".to_owned(), "2".to_owned()),
+            ("SKLAND_GAME_TYPE".to_owned(), "2".to_owned()),
         ]);
 
-        let users = parse_users(&env).unwrap();
+        let user = parse_user(&env).unwrap();
 
-        assert_eq!(users.len(), 1);
-        assert_eq!(users[0].user_token, "numbered");
-        assert_eq!(users[0].game_type, GameType::EndfieldOnly);
+        assert_eq!(user.user_token, "single");
+        assert_eq!(user.game_type, GameType::EndfieldOnly);
     }
 
     #[test]
     fn legacy_env_allows_unquoted_spaces() {
-        let env = parse_legacy_env("SKLAND_NICKNAME=我的 大号\nSKLAND_TOKEN=abc # 注释\n");
+        let env = parse_legacy_env("SOME_VALUE=我的 大号\nSKLAND_TOKEN=abc # 注释\n");
 
-        assert_eq!(
-            env.get("SKLAND_NICKNAME").map(String::as_str),
-            Some("我的 大号")
-        );
+        assert_eq!(env.get("SOME_VALUE").map(String::as_str), Some("我的 大号"));
         assert_eq!(env.get("SKLAND_TOKEN").map(String::as_str), Some("abc"));
     }
 }

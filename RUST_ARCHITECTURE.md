@@ -4,7 +4,7 @@
 
 - `src/main.rs`: CLI 入口，使用 `clap` 解析 `run-once`、`daemon`、`check-config`。
 - `src/config.rs`: 读取 `.env`、解析单账号/多账号配置、校验调度时间。
-- `src/app.rs`: 业务编排，按用户执行授权、凭据、绑定查询、签到和报告保存。
+- `src/app.rs`: 业务编排，按单账号执行授权、凭据、绑定查询、签到和报告保存。
 - `src/http.rs`: 森空岛 HTTP client，使用 `reqwest` 和 `serde_json` 处理接口。
 - `src/sign.rs`: HMAC-SHA256 + MD5 签名，替代旧版本外部 `openssl` 进程。
 - `src/scheduler.rs`: 每天北京时间定时调度，使用 `tokio` 异步 sleep。

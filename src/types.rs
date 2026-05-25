@@ -3,7 +3,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppConfig {
     pub schedule: ScheduleConfig,
-    pub users: Vec<UserConfig>,
+    pub user: UserConfig,
     pub configured_device_id: Option<String>,
     pub env_file: PathBuf,
 }
@@ -16,7 +16,6 @@ pub struct ScheduleConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserConfig {
-    pub nickname: String,
     pub user_token: String,
     pub game_type: GameType,
 }
@@ -94,10 +93,4 @@ pub enum GameSignResult {
         character: Option<String>,
         reason: String,
     },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UserSignReport {
-    pub user: String,
-    pub results: Vec<GameSignResult>,
 }

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use chrono::{DateTime, Days, FixedOffset, LocalResult, NaiveTime, TimeZone, Utc};
 
-use crate::app::{print_reports, run_all_users};
+use crate::app::{print_reports, run_sign_in};
 use crate::http::SklandClient;
 use crate::types::{AppConfig, ScheduleConfig};
 
@@ -17,7 +17,7 @@ pub async fn run_daemon(config: AppConfig, client: SklandClient) {
         println!("下一次签到时间: {}", format_beijing(target));
         sleep_chunked(delay).await;
 
-        let reports = run_all_users(&config, &client).await;
+        let reports = run_sign_in(&config, &client).await;
         print_reports(&reports);
     }
 }

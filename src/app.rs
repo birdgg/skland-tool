@@ -7,51 +7,36 @@ use uuid::Uuid;
 
 use crate::config::cache_dir;
 use crate::http::SklandClient;
-use crate::types::{AppConfig, Binding, Credential, GameSignResult, UserConfig, UserSignReport};
+use crate::types::{AppConfig, Binding, Credential, GameSignResult, UserConfig};
 
-pub async fn run_all_users(config: &AppConfig, client: &SklandClient) -> Vec<UserSignReport> {
+pub async fn run_sign_in(config: &AppConfig, client: &SklandClient) -> Vec<GameSignResult> {
     let did = match get_device_id(config) {
         Ok(did) => did,
         Err(err) => {
-            return config
-                .users
-                .iter()
-                .map(|user| UserSignReport {
-                    user: user.nickname.clone(),
-                    results: vec![GameSignResult::SignFailed {
-                        game: "设备 ID".to_owned(),
-                        character: None,
-                        reason: format_error(&err),
-                    }],
-                })
-                .collect();
+            return vec![GameSignResult::SignFailed {
+                game: "设备 ID".to_owned(),
+                character: None,
+                reason: format_error(&err),
+            }];
         }
     };
     println!("使用设备 ID: {}", mask(&did));
 
-    let mut reports = Vec::with_capacity(config.users.len());
-    for user in &config.users {
-        reports.push(run_user(client, &did, user).await);
-    }
-    if let Err(err) = save_last_report(&reports) {
+    let report = run_user(client, &did, &config.user).await;
+    if let Err(err) = save_last_report(&report) {
         eprintln!("保存最后报告失败: {err}");
     }
-    reports
+    report
 }
 
-async fn run_user(client: &SklandClient, did: &str, user: &UserConfig) -> UserSignReport {
-    println!("开始签到用户: {}", user.nickname);
-    let results = match run_user_inner(client, did, user).await {
+async fn run_user(client: &SklandClient, did: &str, user: &UserConfig) -> Vec<GameSignResult> {
+    match run_user_inner(client, did, user).await {
         Ok(results) => results,
         Err(err) => vec![GameSignResult::SignFailed {
             game: "森空岛".to_owned(),
             character: None,
             reason: format_error(&err),
         }],
-    };
-    UserSignReport {
-        user: user.nickname.clone(),
-        results,
     }
 }
 
@@ -171,29 +156,23 @@ fn parse_device_id(raw: &str) -> Option<String> {
     })
 }
 
-fn save_last_report(reports: &[UserSignReport]) -> Result<()> {
+fn save_last_report(report: &[GameSignResult]) -> Result<()> {
     let path = cache_dir()?.join("last-report.txt");
     let header = format!("time={}", Utc::now().format("%Y-%m-%dT%H:%M:%SZ"));
     let mut lines = vec![header];
-    lines.extend(render_reports(reports));
+    lines.extend(render_report(report));
     std::fs::write(&path, format!("{}\n", lines.join("\n")))
         .with_context(|| format!("写入最后报告失败: {}", path.display()))
 }
 
-pub fn print_reports(reports: &[UserSignReport]) {
-    for line in render_reports(reports) {
+pub fn print_reports(report: &[GameSignResult]) {
+    for line in render_report(report) {
         println!("{line}");
     }
 }
 
-fn render_reports(reports: &[UserSignReport]) -> Vec<String> {
-    reports.iter().flat_map(render_user_report).collect()
-}
-
-fn render_user_report(report: &UserSignReport) -> Vec<String> {
-    let mut lines = vec![format!("用户: {}", report.user)];
-    lines.extend(report.results.iter().map(render_result));
-    lines
+fn render_report(report: &[GameSignResult]) -> Vec<String> {
+    report.iter().map(render_result).collect()
 }
 
 fn render_result(result: &GameSignResult) -> String {
@@ -259,6 +238,20 @@ mod tests {
             parse_device_id("SKLAND_DID=Babc\n").as_deref(),
             Some("Babc")
         );
+    }
+
+    #[test]
+    fn renders_report_without_user_heading() {
+        let lines = render_report(&[GameSignResult::SignSucceeded {
+            game: "明日方舟".to_owned(),
+            character: "博士".to_owned(),
+            awards: vec![crate::types::Award {
+                name: "合成玉".to_owned(),
+                count: 200,
+            }],
+        }]);
+
+        assert_eq!(lines, vec!["  [成功] 明日方舟 / 博士 - 合成玉 x200"]);
     }
 
     #[test]

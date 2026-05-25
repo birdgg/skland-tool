@@ -21,15 +21,13 @@
 | 前置条件 | 已在浏览器登录森空岛官网 |
 | 地址 | `https://web-api.skland.com/account/info/hg` |
 | 返回字段 | `data.content` |
-| 项目用途 | 将 `data.content` 配置到 `config.yaml` 的 `users[].token` |
+| 项目用途 | 将 `data.content` 配置到 `.env` 的 `SKLAND_TOKEN` |
 
 示例配置：
 
-```yaml
-users:
-  - nickname: "我的大号"
-    token: "这里填入 data.content 的长字符串"
-    game_type: 0
+```env
+SKLAND_TOKEN=这里填入 data.content 的长字符串
+SKLAND_GAME_TYPE=0
 ```
 
 ## 设备指纹接口
@@ -86,7 +84,7 @@ dId: <设备指纹>
 ```json
 {
   "appCode": "4ca99fa6b56cc2ba",
-  "token": "<config.yaml 中的 users[].token>",
+  "token": "<.env 中的 SKLAND_TOKEN>",
   "type": 0
 }
 ```
@@ -245,7 +243,7 @@ binding.roles[].nickname
 
 ## 当前代码中的游戏选择
 
-`config.yaml` 中的 `users[].game_type` 控制签到范围：
+当前 Rust 版本通过 `.env` 中的 `SKLAND_TOKEN` 和 `SKLAND_GAME_TYPE` 控制签到范围：
 
 | 值 | 含义 |
 | --- | --- |
