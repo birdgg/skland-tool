@@ -1,0 +1,87 @@
+cabal-version:      3.4
+name:               skland-tool
+version:            0.1.0.0
+synopsis:           Command-line Skland attendance tool
+description:        Haskell implementation of a command-line tool for daily Skland Arknights and Endfield attendance.
+tested-with:        GHC ==9.14.1
+license:            MIT
+license-file:       LICENSE
+author:             birdgg
+maintainer:         birdeggegg@gmail.com
+category:           Web
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall -Wcompat
+
+common language
+    default-language: GHC2021
+    default-extensions:
+        DataKinds
+        DeriveAnyClass
+        DeriveGeneric
+        DerivingStrategies
+        DuplicateRecordFields
+        LambdaCase
+        OverloadedRecordDot
+        OverloadedStrings
+        RecordWildCards
+        TypeApplications
+        TypeOperators
+
+library
+    import:           warnings, language
+    hs-source-dirs:   src
+    exposed-modules:
+        SklandTool.App
+        SklandTool.Config
+        SklandTool.Http.Client
+        SklandTool.Http.Models
+        SklandTool.Report
+        SklandTool.Scheduler
+        SklandTool.Sign
+        SklandTool.Types
+    build-depends:
+        base >=4.18 && <4.23,
+        aeson >=2.2,
+        base16-bytestring,
+        bytestring,
+        cryptohash-md5,
+        cryptohash-sha256,
+        directory,
+        effectful >=2.3,
+        filepath,
+        http-client,
+        http-client-tls,
+        http-types,
+        scientific,
+        text,
+        time,
+        tomland,
+        uuid
+
+executable skland-tool
+    import:           warnings, language
+    main-is:          Main.hs
+    hs-source-dirs:   app
+    build-depends:
+        base >=4.18 && <4.23,
+        optparse-applicative,
+        skland-tool,
+        text
+
+test-suite skland-tool-test
+    import:           warnings, language
+    type:             exitcode-stdio-1.0
+    main-is:          Spec.hs
+    hs-source-dirs:   test
+    build-depends:
+        base >=4.18 && <4.23,
+        aeson,
+        bytestring,
+        skland-tool,
+        tasty,
+        tasty-hunit,
+        text,
+        time

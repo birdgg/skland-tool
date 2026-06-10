@@ -1,0 +1,7 @@
+token = "这里填森空岛 data.content"
+game = "all"
+
+[schedule]
+hour = 6
+minute = 0
+timezone = "Asia/Shanghai"

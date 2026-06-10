@@ -243,19 +243,19 @@ binding.roles[].nickname
 
 ## 当前代码中的游戏选择
 
-当前 Rust 版本通过 `.env` 中的 `SKLAND_TOKEN` 和 `SKLAND_GAME_TYPE` 控制签到范围：
+当前 Haskell 版本通过 `skland-tool.toml` 中的 `token` 和 `game` 控制签到范围：
 
 | 值 | 含义 |
 | --- | --- |
-| `0` | 全部签到 |
-| `1` | 仅《明日方舟》 |
-| `2` | 仅《终末地》 |
+| `all` | 全部签到 |
+| `arknights` | 仅《明日方舟》 |
+| `endfield` | 仅《终末地》 |
 
-执行分支在 `SklandAPI.do_full_sign_in()` 中：
+执行分支在 `SklandTool.App.runBindings` 中：
 
 ```text
-appCode == "arknights" && game_type in (0, 1) -> 明日方舟签到
-appCode == "endfield" && game_type in (0, 2) -> 终末地签到
+appCode == "arknights" && game in ("all", "arknights") -> 明日方舟签到
+appCode == "endfield" && game in ("all", "endfield") -> 终末地签到
 ```
 
 ## 接口调用顺序速查

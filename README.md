@@ -7,50 +7,37 @@
 复制示例配置：
 
 ```bash
-cp .env.example .env
+cp skland-tool.toml.example skland-tool.toml
 ```
 
-编辑 `.env`，填入森空岛 `data.content`：
+编辑 `skland-tool.toml`，填入森空岛 `data.content`：
 
-```env
-SKLAND_TOKEN=这里填森空岛 data.content
-SKLAND_GAME_TYPE=0
+```toml
+token = "这里填森空岛 data.content"
+game = "all"
+
+[schedule]
+hour = 6
+minute = 0
+timezone = "Asia/Shanghai"
 ```
 
-`SKLAND_GAME_TYPE` 可选值：
+`game` 可选值：
 
 ```text
-0 = 明日方舟 + 终末地
-1 = 仅明日方舟
-2 = 仅终末地
+all = 明日方舟 + 终末地
+arknights = 仅明日方舟
+endfield = 仅终末地
 ```
 
 ## 使用
 
-检查配置：
+校验配置、立即签到一次或常驻运行：
 
 ```bash
-cargo run -- check-config
-```
-
-立即签到一次：
-
-```bash
-cargo run -- run-once
-```
-
-常驻运行，每天按 `.env` 中的北京时间执行：
-
-```bash
-cargo run -- daemon
-```
-
-## Release 二进制
-
-```bash
-cargo build --release
-./target/release/skland-tool run-once --env .env
-./target/release/skland-tool daemon --env .env
+cabal run skland-tool -- doctor --config skland-tool.toml
+cabal run skland-tool -- run --config skland-tool.toml
+cabal run skland-tool -- daemon --config skland-tool.toml
 ```
 
 ## 日志
