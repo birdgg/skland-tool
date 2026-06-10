@@ -2,4 +2,6 @@ dist-newstyle/
 target/
 .env
 .DS_Store
+logs/
 *.log
+skland-tool.toml
