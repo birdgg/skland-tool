@@ -241,21 +241,15 @@ binding.roles[].nickname
 2. 使用奖励 ID 到 `data.resourceInfoMap` 查找资源详情。
 3. 输出 `name x count`。
 
-## 当前代码中的游戏选择
+## 当前代码中的游戏签到范围
 
-当前 Haskell 版本通过 `skland-tool.toml` 中的 `token` 和 `game` 控制签到范围：
-
-| 值 | 含义 |
-| --- | --- |
-| `all` | 全部签到 |
-| `arknights` | 仅《明日方舟》 |
-| `endfield` | 仅《终末地》 |
+当前 Haskell 版本通过 `skland-tool.toml` 中的 `token` 登录，并固定每天同时尝试《明日方舟》和《终末地》签到。
 
 执行分支在 `SklandTool.App.runBindings` 中：
 
 ```text
-appCode == "arknights" && game in ("all", "arknights") -> 明日方舟签到
-appCode == "endfield" && game in ("all", "endfield") -> 终末地签到
+appCode == "arknights" -> 明日方舟签到
+appCode == "endfield" -> 终末地签到
 ```
 
 ## 接口调用顺序速查

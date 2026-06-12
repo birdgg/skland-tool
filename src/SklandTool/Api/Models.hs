@@ -1,4 +1,4 @@
-module SklandTool.Http.Models
+module SklandTool.Api.Models
   ( ApiResponse (..)
   , AttendanceResponse
   , BindingGroup (..)

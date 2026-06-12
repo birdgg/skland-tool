@@ -1,0 +1,7 @@
+packages: .
+
+allow-newer:
+  servant:base,
+  servant-client:base,
+  servant-client-core:base,
+  servant-client-core:template-haskell

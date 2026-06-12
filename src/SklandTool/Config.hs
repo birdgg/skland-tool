@@ -2,12 +2,10 @@ module SklandTool.Config
   ( configCodec
   , defaultConfigPath
   , loadConfig
-  , parseGameType
   , validateConfig
   )
 where
 
-import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Toml
 import Toml ((.=), TomlCodec)
@@ -28,7 +26,6 @@ configCodec :: TomlCodec AppConfig
 configCodec =
   AppConfig
     <$> Toml.text "token" .= configToken
-    <*> Toml.textBy gameToText parseGameType "game" .= configGame
     <*> Toml.dioptional (Toml.text "device_id") .= configDeviceId
     <*> Toml.table scheduleCodec "schedule" .= configSchedule
 
@@ -44,19 +41,6 @@ scheduleCodec =
         then Nothing
         else Just zone
     decodeTimezone = maybe "Asia/Shanghai" id
-
-parseGameType :: Text -> Either Text GameType
-parseGameType = \case
-  "all" -> Right AllGames
-  "arknights" -> Right Arknights
-  "endfield" -> Right Endfield
-  other -> Left $ "game 必须是 all、arknights 或 endfield，当前值: " <> other
-
-gameToText :: GameType -> Text
-gameToText = \case
-  AllGames -> "all"
-  Arknights -> "arknights"
-  Endfield -> "endfield"
 
 validateConfig :: AppConfig -> Either AppError AppConfig
 validateConfig config

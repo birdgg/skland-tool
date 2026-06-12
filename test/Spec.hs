@@ -11,9 +11,9 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import SklandTool.Config
-import SklandTool.Http.Models
+import SklandTool.Api.Models
+import SklandTool.Api.Signature
 import SklandTool.Scheduler
-import SklandTool.Sign
 import SklandTool.Types
 
 main :: IO ()
@@ -33,8 +33,6 @@ configTests =
     "config"
     [ testCase "accepts valid config defaults" $
         validateConfig validConfig @?= Right validConfig
-    , testCase "rejects invalid game text" $
-        assertBool "invalid game should fail" $ isLeft $ parseGameType "bad"
     , testCase "rejects invalid schedule" $
         assertBool "invalid hour should fail" $
           isLeft $
@@ -48,7 +46,6 @@ configTests =
     validConfig =
       AppConfig
         { configToken = "token"
-        , configGame = AllGames
         , configDeviceId = Nothing
         , configSchedule = ScheduleConfig 6 0 "Asia/Shanghai"
         }

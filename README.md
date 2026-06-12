@@ -14,7 +14,6 @@ cp skland-tool.toml.example skland-tool.toml
 
 ```toml
 token = "这里填森空岛 data.content"
-game = "all"
 
 [schedule]
 hour = 6
@@ -22,13 +21,7 @@ minute = 0
 timezone = "Asia/Shanghai"
 ```
 
-`game` 可选值：
-
-```text
-all = 明日方舟 + 终末地
-arknights = 仅明日方舟
-endfield = 仅终末地
-```
+工具会每天同时尝试《明日方舟》和《终末地》签到。
 
 ## 使用
 

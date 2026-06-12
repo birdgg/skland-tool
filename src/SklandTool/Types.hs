@@ -5,13 +5,10 @@ module SklandTool.Types
   , Binding (..)
   , Credential (..)
   , EndfieldRole (..)
-  , GameType (..)
   , Runtime (..)
   , ScheduleConfig (..)
   , SignResult (..)
   , renderAppError
-  , wantsArknights
-  , wantsEndfield
   )
 where
 
@@ -20,24 +17,6 @@ import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Client (Manager)
-
-data GameType
-  = AllGames
-  | Arknights
-  | Endfield
-  deriving stock (Eq, Show)
-
-wantsArknights :: GameType -> Bool
-wantsArknights = \case
-  AllGames -> True
-  Arknights -> True
-  Endfield -> False
-
-wantsEndfield :: GameType -> Bool
-wantsEndfield = \case
-  AllGames -> True
-  Arknights -> False
-  Endfield -> True
 
 data ScheduleConfig = ScheduleConfig
   { scheduleHour :: !Int
@@ -48,7 +27,6 @@ data ScheduleConfig = ScheduleConfig
 
 data AppConfig = AppConfig
   { configToken :: !Text
-  , configGame :: !GameType
   , configDeviceId :: !(Maybe Text)
   , configSchedule :: !ScheduleConfig
   }

@@ -1,4 +1,4 @@
-module SklandTool.Sign
+module SklandTool.Api.Signature
   ( SignedHeaders (..)
   , arknightsBody
   , compactObject

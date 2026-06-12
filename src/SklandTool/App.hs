@@ -7,41 +7,39 @@ module SklandTool.App
 where
 
 import Control.Concurrent (threadDelay)
-import Control.Exception (IOException, try)
 import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Text.Encoding (decodeUtf8', encodeUtf8)
 import qualified Data.Text.IO as TIO
 import Data.Time
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Effectful
 import Effectful.Error.Static
+import Effectful.Exception (IOException, try)
+import qualified Effectful.FileSystem as FS
+import qualified Effectful.FileSystem.IO.ByteString as EBS
 import Effectful.Reader.Static
+import Effectful.Time (Time, currentTime, runTime)
 import Network.HTTP.Client (Manager)
-import System.Directory
-  ( XdgDirectory (XdgConfig)
-  , createDirectoryIfMissing
-  , doesFileExist
-  , getXdgDirectory
-  )
 import System.FilePath ((</>))
 import qualified Data.UUID as UUID
 import qualified Data.UUID.V4 as UUID
 
 import SklandTool.Config (validateConfig)
-import SklandTool.Http.Client
-import SklandTool.Http.Models
+import SklandTool.Api.Client
+import SklandTool.Api.Models
 import SklandTool.Report
 import SklandTool.Scheduler
 import SklandTool.Types
 
-type AppEff es = (Reader Runtime :> es, Error AppError :> es, IOE :> es)
+type AppEff es = (Reader Runtime :> es, Error AppError :> es, FS.FileSystem :> es, Time :> es, IOE :> es)
 
 buildRuntime :: AppConfig -> IO Runtime
-buildRuntime config = do
-  manager <- newManager
-  cacheDir <- getXdgDirectory XdgConfig "skland-tool"
-  createDirectoryIfMissing True cacheDir
+buildRuntime config = runEff $ FS.runFileSystem $ do
+  manager <- liftIO newManager
+  cacheDir <- FS.getXdgDirectory FS.XdgConfig "skland-tool"
+  FS.createDirectoryIfMissing True cacheDir
   pure Runtime{runtimeConfig = config, runtimeManager = manager, runtimeCacheDir = cacheDir}
 
 runDoctor :: AppConfig -> IO (Either AppError ())
@@ -53,21 +51,22 @@ runDoctor config = do
       pure $ Right $ runtime.runtimeManager `seq` ()
 
 runOnce :: Runtime -> IO (Either AppError [SignResult])
-runOnce runtime = runEff $ runErrorNoCallStack @AppError $ runReader runtime runSignIn
+runOnce runtime = runEff $ FS.runFileSystem $ runTime $ runErrorNoCallStack @AppError $ runReader runtime runSignIn
 
 runDaemon :: Runtime -> IO ()
-runDaemon runtime = foreverLoop
+runDaemon runtime = runEff $ runTime foreverLoop
   where
+    foreverLoop :: (Time :> es, IOE :> es) => Eff es ()
     foreverLoop = do
-      now <- getCurrentTime
+      now <- currentTime
       let target = nextRunAt runtime.runtimeConfig.configSchedule now
           seconds = max 0 $ floor $ diffUTCTime target now
-      putStrLn $ "下一次签到时间: " <> formatBeijing target
-      sleepChunked seconds
-      result <- runOnce runtime
+      liftIO $ putStrLn $ "下一次签到时间: " <> formatBeijing target
+      liftIO $ sleepChunked seconds
+      result <- liftIO $ runOnce runtime
       case result of
-        Left err -> TIO.putStrLn $ renderAppError err
-        Right report -> mapM_ TIO.putStrLn $ renderReport report
+        Left err -> liftIO $ TIO.putStrLn $ renderAppError err
+        Right report -> liftIO $ mapM_ TIO.putStrLn $ renderReport report
       foreverLoop
 
 runSignIn :: AppEff es => Eff es [SignResult]
@@ -75,27 +74,21 @@ runSignIn = do
   runtime <- ask @Runtime
   did <- getDeviceId
   liftIO $ TIO.putStrLn $ "使用设备 ID: " <> mask did
-  report <- runUser did runtime.runtimeConfig.configToken runtime.runtimeConfig.configGame
+  report <- runUser did runtime.runtimeConfig.configToken
   saveLastReport report
   pure report
 
-runUser :: AppEff es => Text -> Text -> GameType -> Eff es [SignResult]
-runUser did token gameType = do
+runUser :: AppEff es => Text -> Text -> Eff es [SignResult]
+runUser did token = do
   code <- requestAuth did token
   credential <- requestCredential did code
   bindings <- requestBindings did credential
-  runBindings did credential gameType bindings
+  runBindings did credential bindings
 
-runBindings :: AppEff es => Text -> Credential -> GameType -> [Binding] -> Eff es [SignResult]
-runBindings did credential gameType bindings = do
-  arknightsResults <-
-    if wantsArknights gameType
-      then runArknights did credential bindings
-      else pure []
-  endfieldResults <-
-    if wantsEndfield gameType
-      then runEndfield did credential bindings
-      else pure []
+runBindings :: AppEff es => Text -> Credential -> [Binding] -> Eff es [SignResult]
+runBindings did credential bindings = do
+  arknightsResults <- runArknights did credential bindings
+  endfieldResults <- runEndfield did credential bindings
   pure $ arknightsResults <> endfieldResults
 
 runArknights :: AppEff es => Text -> Credential -> [Binding] -> Eff es [SignResult]
@@ -179,7 +172,7 @@ getCachedDeviceId :: AppEff es => Eff es Text
 getCachedDeviceId = do
   cacheDir <- asks @Runtime runtimeCacheDir
   let path = cacheDir </> "device.env"
-  exists <- liftIO $ doesFileExist path
+  exists <- FS.doesFileExist path
   if exists
     then do
       raw <- readTextFile path
@@ -204,24 +197,25 @@ parseDeviceId raw =
 saveLastReport :: AppEff es => [SignResult] -> Eff es ()
 saveLastReport report = do
   cacheDir <- asks @Runtime runtimeCacheDir
-  now <- liftIO getCurrentTime
+  now <- currentTime
   let header = "time=" <> T.pack (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%SZ" now)
       body = T.unlines $ header : renderReport report
   writeTextFile (cacheDir </> "last-report.txt") body
 
 readTextFile :: AppEff es => FilePath -> Eff es Text
 readTextFile path = do
-  result <- liftIO $ try @IOException $ TIO.readFile path
-  either (throwError . StorageError . T.pack . show) pure result
+  result <- try @IOException $ EBS.readFile path
+  bytes <- either (throwError . StorageError . T.pack . show) pure result
+  either (throwError . StorageError . T.pack . show) pure $ decodeUtf8' bytes
 
 writeTextFile :: AppEff es => FilePath -> Text -> Eff es ()
 writeTextFile path body = do
-  result <- liftIO $ try @IOException $ TIO.writeFile path body
+  result <- try @IOException $ EBS.writeFile path $ encodeUtf8 body
   either (throwError . StorageError . T.pack . show) pure result
 
-currentSignTimestamp :: IOE :> es => Eff es Int64
+currentSignTimestamp :: Time :> es => Eff es Int64
 currentSignTimestamp = do
-  now <- liftIO getCurrentTime
+  now <- currentTime
   pure $ floor (utcTimeToPOSIXSeconds now) - 2
 
 sleepChunked :: Int -> IO ()

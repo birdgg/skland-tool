@@ -36,11 +36,11 @@ library
     exposed-modules:
         SklandTool.App
         SklandTool.Config
-        SklandTool.Http.Client
-        SklandTool.Http.Models
+        SklandTool.Api.Client
+        SklandTool.Api.Models
+        SklandTool.Api.Signature
         SklandTool.Report
         SklandTool.Scheduler
-        SklandTool.Sign
         SklandTool.Types
     build-depends:
         base >=4.18 && <4.23,
@@ -49,13 +49,17 @@ library
         bytestring,
         cryptohash-md5,
         cryptohash-sha256,
-        directory,
         effectful >=2.3,
         filepath,
         http-client,
         http-client-tls,
+        http-media,
         http-types,
+        monad-time-effectful,
         scientific,
+        servant,
+        servant-client,
+        servant-client-core,
         text,
         time,
         tomland,
